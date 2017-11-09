@@ -25,6 +25,7 @@
     "autoload": {
         "psr-4": {
             "Moota\\EDD\\": "lib/edd"
-        }
+        },
+        "classmap": ["lib/kint"]
     }
 }

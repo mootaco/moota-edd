@@ -3,181 +3,65 @@
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-// $id = 696;
+use Moota\SDK\Config as MootaConfig;
+use Moota\EDD\OrderFetcher;
+use Moota\EDD\OrderMatcher;
 
-// $post = WP_Post::get_instance($id);
+if (strtolower($_SERVER['REQUEST_METHOD']) !== 'post') {
+    http_response_code(404);
+    echo 'Only POST is allowed';
+    wp_die();
+}
 
-// $dl = new EDD_Download($id);
+$isTestMode = edd_is_test_mode();
 
-// $price = $dl->get_price();
+MootaConfig::fromArray(array(
+    'apiKey' => $isTestMode
+        ? 'testing' : edd_get_option(MOOTA_OPT_APIKEY),
+    'sdkMode' => $isTestMode ? 'testing' : 'production',
+    'serverAddress' => $isTestMode ? MOOTA_SANDBOX : MOOTA_LIVE,
+));
 
-$eddPayment = array(
-    'ID' => 696,
-    '_ID' => 696,
-    'new' => false,
-    'number' => 696,
-    'mode' => 'test',
-    'key' => '0dbfe3bfed0db0711f9ac16f50409c6a',
-    'total' => '30.00',
-    'subtotal' => 30,
-    'tax' => '0',
-    'discounted_amount' => 0,
-    'tax_rate' => '0',
-    'fees' =>  array (),
-    'fees_total' => 0,
-    'discounts' => 'none',
-    'date' => '2017-11-08 08:58:00',
-    'completed_date' => false,
-    'status' => 'pending',
-    'post_status' => 'pending',
-    'old_status' => '',
-    'status_nicename' => 'Pending',
-    'customer_id' => '1',
-    'user_id' => '0',
-    'first_name' => 'Kacau',
-    'last_name' => 'Lumbantoruan',
-    'email' => 'aprilkacau@gmail.com',
-    'user_info' => array (
-     'first_name' => 'Kacau',
-     'last_name' => 'Lumbantoruan',
-     'discount' => 'none',
-     'email' => 'aprilkacau@gmail.com',
-     'address' => array (
-       'line1' => '',
-       'line2' => '',
-       'city' => '',
-       'zip' => '',
-       'country' => '',
-       'state' => '',
-     ),
-   ),
-    'payment_meta' => array (
-     'key' => '0dbfe3bfed0db0711f9ac16f50409c6a',
-     'email' => 'aprilkacau@gmail.com',
-     'date' => '2017-11-08 08:58:00',
-     'user_info' => array (
-       'email' => 'aprilkacau@gmail.com',
-       'first_name' => 'Kacau',
-       'last_name' => 'Lumbantoruan',
-       'discount' => 'none',
-       'address' => array (
-         'line1' => '',
-         'line2' => '',
-         'city' => '',
-         'zip' => '',
-         'country' => '',
-         'state' => '',
-       ),
-     ),
-     'downloads' => array (
-       array (
-         'id' => 67,
-         'quantity' => 1,
-         'options' =>
-         array (
-           'quantity' => 1,
-           'price_id' => '2',
-         ),
-       ),
-     ),
-     'cart_details' => array (
-       array (
-         'discount' => 0,
-         'fees' =>
-         array (
-         ),
-         'id' => 67,
-         'item_number' =>
-         array (
-           'id' => 67,
-           'quantity' => 1,
-           'options' =>
-           array (
-             'quantity' => 1,
-             'price_id' => '2',
-           ),
-         ),
-         'item_price' => '30.00',
-         'name' => 'Another Sample Product',
-         'price' => 30,
-         'quantity' => 1,
-         'subtotal' => 30,
-         'tax' => '0.00',
-       ),
-     ),
-     'fees' => array (
-     ),
-     'currency' => 'USD',
-   ),
-    'address' => array (
-     'line1' => '',
-     'line2' => '',
-     'city' => '',
-     'country' => '',
-     'state' => '',
-     'zip' => '',
-   ),
-    'transaction_id' => '',
-    'downloads' => array (
-     array (
-       'id' => 67,
-       'quantity' => 1,
-       'options' => array (
-         'quantity' => 1,
-         'price_id' => '2',
-       ),
-     ),
-   ),
-    'ip' => '::1',
-    'gateway' => 'paypal',
-    'currency' => 'USD',
-    'cart_details' => array (
-     array (
-       'discount' => 0,
-       'fees' => array (
-       ),
-       'id' => 67,
-       'item_number' => array (
-         'id' => 67,
-         'quantity' => 1,
-         'options' =>
-         array (
-           'quantity' => 1,
-           'price_id' => '2',
-         ),
-       ),
-       'item_price' => '30.00',
-       'name' => 'Another Sample Product',
-       'price' => 30,
-       'quantity' => 1,
-       'subtotal' => 30,
-       'tax' => '0.00',
-     ),
-   ),
-    'has_unlimited_downloads' => false,
-    'pending' => array (
-   ),
-    'parent_payment' => 0,
+$handler = Moota\SDK\PushCallbackHandler::createDefault()
+    ->setTransactionFetcher(new OrderFetcher)
+    ->setPaymentMatcher(new OrderMatcher)
+;
+
+$payments = $handler->handle();
+$statusData = array(
+    'status' => 'not-ok', 'error' => 'No matching order found'
 );
 
-jdd($eddPayment);
+if ( count( $payments ) > 0 ) {
+    $savedCount = 0;
+    foreach ($payments as $payment) {
+        $payment['orderModel']->status = 'publish';
+        $savedCount += $payment['orderModel']->save() ? 1 : 0;
 
-$query = new EDD_Payments_Query(array(
-    'status' => 'pending',
-));
+        edd_set_payment_transaction_id(
+            $payment['id'], $payment['transactionId']
+        );
 
-$payments = $query->get_payments();
-// $payments = json_encode($payments, JSON_PRETTY_PRINT);
+        $note = "Payment applied from Moota, MootaID: {$payment['mootaId']}"
+            . ", amount: {$payment['mootaAmount']}";
 
-// $downloads = array();
+        wp_insert_comment( wp_filter_comment( array(
+            'comment_post_ID'      => $payment_id,
+            'comment_content'      => $note,
+            'user_id'              => 0,
+            'comment_date'         => current_time( 'mysql' ),
+            'comment_date_gmt'     => current_time( 'mysql', 1 ),
+            'comment_approved'     => 1,
+            'comment_parent'       => 0,
+            'comment_author'       => '',
+            'comment_author_IP'    => '',
+            'comment_author_url'   => '',
+            'comment_author_email' => '',
+            'comment_type'         => 'edd_payment_note'
+        ) ) );
+    }
 
-// foreach ($query['posts'] as $post) {
-//     $downloads[] = $post;
-// }
+    $statusData = array('status' => 'ok', 'count' => count($savedCount));
+}
 
-dd($payments[0]);
-
-dd(compact(
-    // 'id', 'post', 'dl', 'price'
-    'payments'
-));
+wp_send_json($statusData);

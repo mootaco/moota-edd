@@ -1,6 +1,8 @@
 <?php
 
 require_once __DIR__ . '/lib/vendor/autoload.php';
+require_once __DIR__ . '/functions.php';
+require_once __DIR__ . '/lib/kint/init.php';
 
 /*
 Plugin Name: Moota EDD Payment
@@ -12,56 +14,11 @@ Author URI: https://moota.co
 */
 
 const MOOTA_SETTING = 'edd_moota_settings';
-
 const MOOTA_TOKEN = 'moota_user_token';
 const MOOTA_SANDBOX = 'http://moota.matamerah.com';
 const MOOTA_LIVE = 'https://app.moota.co';
 const MOOTA_OPT_APIKEY = 'moota_api_key';
 const MOOTA_OPT_APITIMEOUT = 'moota_api_timeout';
-
-if (! function_exists('d')) {
-    function d($var, $shouldReturn = null) {
-        $shouldReturn = empty($shouldReturn) ? false : $shouldReturn;
-
-        $dump = '<pre>' . var_export($var, true) . '</pre>';
-
-        if ($shouldReturn) {
-            return $dump;
-        }
-
-        echo $dump;
-    }
-}
-
-if (! function_exists('dd')) {
-    function dd($var) {
-        d($var);
-        wp_die();
-    }
-}
-
-if (! function_exists('jdd')) {
-    function jdd($var) {
-        dd(json_encode($var, JSON_PRETTY_PRINT));
-        wp_die();
-    }
-}
-
-if (! function_exists('_s')) {
-    function _s($str) { return "<strong>{$str}</strong>"; }
-}
-
-if (! function_exists('_desc')) {
-    function _desc($str) {
-        return '<br>' . ___($str);
-    }
-}
-
-if (! function_exists('___')) {
-    function ___($str) {
-        return __($str, 'moota-edd');
-    }
-}
 
 // registers the gateway
 add_filter('edd_payment_gateways', function($gateways) {
@@ -154,6 +111,11 @@ add_action('edd_settings_sections_gateways', function ($sections) {
     ));
 });
 
+// MootaPay does not need a CC form, so remove it.
+// edd_<name>_cc_form is only executed when
+// `name` is the selected payment method
+add_action('edd_moota_cc_form', '__return_false');
+
 register_activation_hook( __FILE__, function () {
     $edd_options = moota_init_options();
 } );
@@ -168,6 +130,3 @@ function moota_init_options() {
 add_action('wp_ajax_nopriv_moota_push', function () {
     require_once __DIR__ . '/notification.php';
 });
-
-// MootaPay does not need a CC form, so remove it.
-add_action('edd_moota_cc_form', '__return_false');
