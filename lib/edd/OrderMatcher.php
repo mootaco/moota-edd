@@ -1,8 +1,8 @@
 <?php namespace Moota\EDD;
 
-use Moota\SDK\Contracts\MatchPayments;
+use Moota\SDK\Contracts\Push\MatchesOrders;
 
-class OrderMatcher implements MatchPayments
+class OrderMatcher implements MatchesOrders
 {
     public function match(array $mootaInflows, array $orders)
     {

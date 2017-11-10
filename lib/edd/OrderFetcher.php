@@ -1,8 +1,8 @@
 <?php namespace Moota\EDD;
 
-use Moota\SDK\Contracts\FetchesTransactions;
+use Moota\SDK\Contracts\Push\FetchesOrders;
 
-class OrderFetcher implements FetchesTransactions
+class OrderFetcher implements FetchesOrders
 {
     public function fetch(array $inflowAmounts)
     {

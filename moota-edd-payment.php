@@ -2,7 +2,6 @@
 
 require_once __DIR__ . '/lib/vendor/autoload.php';
 require_once __DIR__ . '/functions.php';
-require_once __DIR__ . '/lib/kint/init.php';
 
 /*
 Plugin Name: Moota EDD Payment
@@ -40,13 +39,13 @@ add_filter('edd_settings_gateways', function($gatewaySettings) {
 
     $mootaApiKey = $isTestMode ? 'testing' : $mootaApiKey;
 
+    $mootaSettingsUrl = 'https://app.moota.co/settings?tab=api';
     $mootaApiKeyDesc = '<br>' . (
         $isTestMode
             ? ___('Dalam mode testing (sandbox), menggunakan api key sandbox')
             : ___('Dapatkan API Key melalui: ')
-                . '<a href="https://app.moota.co/settings?tab=api" '
-                . 'target="_new">https://app.moota.co/settings?'
-                . 'tab=api</a>'
+                . '<a href="' . $mootaSettingsUrl . '" '
+                . 'target="_new">' . $mootaSettingsUrl . '</a>'
     );
 
     $apiKeySettings = array(
@@ -54,14 +53,15 @@ add_filter('edd_settings_gateways', function($gatewaySettings) {
         'name' => ___('*Api Key'),
         'desc' => $mootaApiKeyDesc,
         'type' => 'text',
-        'size' => 'regular',
-        'value' => $mootaApiKey,
+        'size' => 'large',
     );
 
     if ($isTestMode) {
-        $apiKeySettings['disabled'] = 'disabled';
+        $apiKeySettings['faux'] = true;
+        $apiKeySettings['std'] = $mootaApiKey;
     } else {
         $apiKeySettings['required'] = 'required';
+        $apiKeySettings['value'] = $mootaApiKey;
     }
 
 
@@ -76,31 +76,28 @@ add_filter('edd_settings_gateways', function($gatewaySettings) {
         array(
             'id' => MOOTA_OPT_APITIMEOUT,
             'name' => ___('Api Timeout'),
-            'desc' => _desc('API Timeout (dalam detik)'),
+            'desc' => ___('API Timeout (dalam detik)'),
             'type' => 'text',
-            'size' => 'regular',
+            'size' => 'small',
             'value' => edd_get_option(MOOTA_OPT_APITIMEOUT),
         ),
         array(
             'id' => 'moota_push_notif_url',
             'name' => ___('Push Notif Callback url'),
-            'desc' => '<br>URL: <code>' . get_site_url(
-                    null,
-                    '/wp-admin/admin-ajax.php?action=moota_push'
-                ) . '</code>'
-                . _desc(
-                    'Masuk halaman edit bank di moota > tab notifikasi '
-                        . '> edit "API Push Notif" '
-                        . '> lalu masukkan url ini'
-                )
-            ,
+            'desc' => _desc(
+                'Masuk halaman edit bank di moota > tab notifikasi '
+                    . '> edit "API Push Notif" '
+                    . '> lalu masukkan url ini'
+            ),
             'type' => 'text',
-            'size' => 'regular',
-            'disabled' => 'disabled',
+            'size' => 'large',
+            'std' => get_site_url(
+                null,
+                '/wp-admin/admin-ajax.php?action=moota_push'
+            ),
+            'faux'     => true,
         ),
     );
-
-    // echo '<pre>', var_export($gatewaySettings, true), '</pre>'; wp_die();
 
     return $gatewaySettings;
 }, 2, 1);
@@ -117,7 +114,7 @@ add_action('edd_settings_sections_gateways', function ($sections) {
 add_action('edd_moota_cc_form', '__return_false');
 
 register_activation_hook( __FILE__, function () {
-    $edd_options = moota_init_options();
+    moota_init_options();
 } );
 
 function moota_init_options() {
